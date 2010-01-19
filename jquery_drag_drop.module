@@ -1,103 +1,152 @@
 <?php
-// $Id: jquery_drag_drop.module,v 1.1 2009/01/17 23:43:46 ebizondrupalservices Exp $
-
-
 /**
- * Implementation of hook_menu().
- */
-function jquery_drag_drop_menu() {
-
-  $items = array();
-
-  $items['admin/settings/jquery_drag_drop'] = array(
-    'title' => 'Jquery Drag Drop admin settings',
-    'description' => 'Update settings for drag and drop using jQuery',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('jquery_drag_drop_admin'),
-    'access arguments' => array('administrator content'),
-    'type' => MENU_NORMAL_ITEM,
-  );
-
-  return $items;
-}
-
-/**
- * Create administration form
- */
-function jquery_drag_drop_admin(&$form_state, $form_id = '', $op = '') {
-
-  $form['drag_drop_block1'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Div Id of first Block Region'),
-    '#default_value' => variable_get('drag_drop_block1', 'div#sidebar-left'),
-    '#description' => t('Set the CSS Block Div Id. For example, if your page.tpl.php looks like <code>&lt;div class="sidebar" id="sidebar-left"&gt;&lt;?php print $left; ?&gt;&lt;/div&gt;, then enter div#sidebar-left, to be able to drag-drop on left side region in sidebar-left'),
-  );
-
-
-
-  $form['drag_drop_block2'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Div Id of second Block Region'),
-    '#default_value' => variable_get('drag_drop_block2', 'div#sidebar-right'),
-    '#description' => t('Set the CSS 2nd Block Div Id. For example, if your page.tpl.php looks like <code>&lt;div class="sidebar" id="sidebar-right"&gt;&lt;?php print $right; ?&gt;&lt;/div&gt;, then enter div#sidebar-right, to be able to drag-drop on right side region in sidebar-right'),
-  );
-  $form['drag_drop_block3'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Div Id of 3rd Block Region'),
-    '#default_value' => variable_get('drag_drop_block3', ''),
-    '#description' => t('Set the CSS Block Div Id. For example, if your page.tpl.php looks like <code>&lt;div class="sidebar" id="region1"&gt;&lt;?php print $region1; ?&gt;&lt;/div&gt;, then enter div#region1, to be able to drag-drop in region1'),
-  );
-
-
-  return system_settings_form($form);
-}
-
+ * Add draggable blocks styles.
+ *
+*/
 function _jquery_drag_drop_css() {
   $css_file = drupal_get_path('module', 'jquery_drag_drop') .'/jquery_drag_drop.css';
-  drupal_add_css($css_file);
-}
-
-function _jquery_drag_drop_js() {
-  jquery_interface_add();
-  $sidebar[1] = variable_get('drag_drop_block1', 'div#sidebar-left');
-  $sidebar[2] = variable_get('drag_drop_block2', 'div#sidebar-right');
-  $sidebar[3] = variable_get('drag_drop_block3', '');
-
-  for ($i = 1; $i <= 3; $i++) {
-    drupal_add_js(<<<EOT
-$(document).ready(
-  function () {
-    $('$sidebar[$i]').Sortable(
-      {
-        accept : 'block',
-        onchange : function (obj) {
-                     serial = $.SortSerialize(obj[0].id);
-                     //alert(serial.hash);
-                   },
-        fx:			200,
-        opacity:		0.8
-      }
-    )
-  }
-);  
-function serialize(s)
-{
-	serial = $.SortSerialize(s);
-	//alert(serial.hash);
-}
-EOT
-      , 'inline'
-    );
-  }
+  drupal_add_css($css_file, 'module');
 }
 
 /**
- * Implementation of moduleName_init().
+ * Implementation of hook_init().
  *
  */
 function jquery_drag_drop_init() {
-
   _jquery_drag_drop_css();
-  _jquery_drag_drop_js();
 }
 
+/**
+ * Add draggable blocks sortable jquery scripts.
+ *
+*/
+function _jquery_drag_drop_js() {
+  global $theme_key;
+  jquery_ui_add(array('ui.sortable'));
+
+  init_theme();
+
+  $regions = system_region_list($theme_key);
+
+  $sortables = '';
+  $connect_with = '';
+  foreach($regions as $key => $value) {
+    $connect_with = '';
+    foreach($regions as $key2 => $value2) {
+      if ($key2 != $key) {
+        $connect_with .= '"#bloks-region-' . $key2 . '", ';
+      }
+      $serialize .= '$("#edit-' . $key2 . '").val($("#bloks-region-' . $key2 . '").sortable("serialize"));';
+    }
+    $sortables .= <<<EOT
+    $("#bloks-region-$key").sortable({
+        connectWith: [$connect_with],
+        items:  'div.block',
+        stop: function(event, ui) {
+            $serialize
+        }
+    });
+EOT;
+  }
+
+
+  drupal_add_js(<<<EOT
+$(function() {
+$sortables
+}); 
+
+EOT
+    , 'inline'
+  );
+}
+
+/**
+ * Wrap blocks in own layer.
+ *
+ * Implementation of phptemplate_blocks().
+ *
+ */
+function phptemplate_blocks($region) {
+  $output = '';
+  if(user_access('administer blocks')) {
+    if(isset($_GET['edit_blocks']) && $_GET['edit_blocks']) {
+      $output .= '<div id="bloks-region-' . $region . '" class="region-blocks">';
+    }
+  }
+  if ($list = block_list($region)) {
+    foreach ($list as $key => $block) {
+      // $key == <i>module</i>_<i>delta</i>
+      $output .= theme('block', $block);
+    }
+  }
+  if(user_access('administer blocks')) {
+    if(isset($_GET['edit_blocks']) && $_GET['edit_blocks']) {
+      $output .= '</div>';
+    }
+  }
+  // Add any content assigned to this region through drupal_set_content() calls.
+  $output .= drupal_get_content($region);
+
+  return $output;
+}
+
+/**
+ * Implementation of form with hidden fields for saving sortable blocks.
+ *
+ */
+function save_block_position() {
+  global $theme_key;
+  init_theme();
+
+  $regions = system_region_list($theme_key);
+  $form = array();
+  foreach($regions as $key => $region) {
+    $form[$key] = array('#type' => 'hidden');
+  }
+
+  $form['submit'] = array('#type' => 'submit',
+    '#value' => t('Save'),
+  );
+
+  $form['cancel'] = array('#type' => 'markup',
+    '#value' => l(t('Cancel'), $_GET['q']),
+  );
+
+  return $form;
+}
+
+/**
+ * Save blocks positions.
+ */
+function save_block_position_submit($form, &$form_state) {
+  global $theme_key;
+  init_theme();
+  $regions = system_region_list($theme_key);
+  $values = $form_state['values'];
+  foreach($regions as $region => $region_name) {
+    if(!empty($values[$region])) {
+      $region_blocks = explode('&', $values[$region]);
+      foreach ($region_blocks as $weight => $block) {
+        $block_p = explode('=', $block);
+        db_query("UPDATE {blocks} SET region = '%s', weight = '%s' WHERE module = '%s' AND delta = '%s' AND theme = '%s'", $region, $weight, str_replace('block-', '', str_replace('[]', '', $block_p[0])), $block_p[1], $theme_key);
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_preprocess_page().
+ *
+ * Add blocks editing pages
+ */
+function jquery_drag_drop_preprocess_page(&$vars) {
+  if(user_access('administer blocks')) {
+    if(isset($_GET['edit_blocks']) && $_GET['edit_blocks']) {
+      _jquery_drag_drop_js();
+      $form_block_editing = drupal_get_form('save_block_position');
+      $vars['header'] .= $form_block_editing;
+    } else {
+      $vars['header'] .= '<div id="edit_blocks_wrapper"><a href="' . url($_GET['q'], array('query' => array('edit_blocks' => true))) . '" id="edit_blocks">Edit Blocks</a></div>';
+    }
+  }
+}

@@ -2,7 +2,7 @@
   README.txt for Jquery Drag Drop for Blocks.module for Drupal
 *******************************************************
 
-This module written by developers at Ebizon Technologies (www.ebizontek.com) enables drag-drop on blocks. The regions on which those blocks can be dragged are configurable through admin section. It depends on the Interface Sortable and JQuery Interface module which in turn relies on the JQuery Update module.
+This module written by developers at Ebizon Technologies (www.ebizontek.com) enables drag-drop on blocks. The regions on which those blocks can be dragged are configurable through admin section. It depends on the JQuery UI and JQuery Update module.
 
 INSTALLATION:
 

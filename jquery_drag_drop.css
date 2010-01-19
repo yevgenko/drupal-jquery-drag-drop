@@ -1,17 +1,26 @@
-.sortable-item {
-	cursor: move;
+.ui-sortable .block {
+  cursor: move;
 }
 
-div.sortable-item {
-	width: 300px;
-	border: 2px solid blue;
-	margin: 3px;
+div.ui-sortable-helper {
+  width: 300px;
+  border: 2px solid red;
+  margin: 3px;
 }
 
-.sortable-helper
-{
-	border: 2px dashed #a020f0;
-	background: yellow;
-	width: 300px !important;
+
+.ui-sortable-placeholder { 
+  border: 1px dotted red; 
+  visibility: visible !important; 
+  height: 50px !important; 
+} 
+.ui-sortable-placeholder * { 
+  visibility: hidden !important; 
 }
 
+.region-blocks { min-height: 2px; }
+
+#edit_blocks_wrapper, #save-block-position { position: absolute; padding: 20px; top: 0px; right: 0px; background: url(images/panels_bg.png) repeat; overflow: hidden; }
+#save-block-position .form-submit { display: block; color: #000; width: 131px; padding-left: 40px; height: 43px; line-height: 43px; font-size: 25px; background: url(images/save_bg.gif) top left no-repeat; border: none; float: left; }
+#save-block-position a { display: block; color: #000; width: 91px; padding-left: 40px; height: 43px; line-height: 43px; font-size: 25px; background: url(images/cancel_bg.gif) top left no-repeat; float: right; }
+#edit_blocks_wrapper a { display: block; color: #000; width: 145px; padding-left: 40px; height: 43px; line-height: 43px; font-size: 25px; background: url(images/edit_bg.gif) top left no-repeat; }
